@@ -1,0 +1,69 @@
+/**
+ * Seed / refresh script for data/chapters.json.
+ *
+ * Re-syncs the JSON file from the in-code chapter list below. Idempotent:
+ * safe to re-run; will overwrite chapters.json with a clean, normalized copy.
+ *
+ * Run with:  bun prisma/seed.ts
+ *
+ * This is now the ONLY seed you need — there is no Prisma DB anymore.
+ */
+import { promises as fs } from "fs";
+import path from "path";
+
+type Chapter = {
+  id: string;
+  code: string;
+  chapterNumber: number;
+  titleBn: string;
+  titleEn: string;
+  descriptionBn: string;
+  descriptionEn: string;
+  duration: string;
+  videoId: string;
+  category: "ielts" | "sop" | "visa" | "scholarship" | "interview";
+  isActive: boolean;
+  sortOrder: number;
+};
+
+const CHAPTERS: Chapter[] = [
+  { id: "ifb-ielts-01", code: "IFB-IELTS-01", chapterNumber: 1, titleBn: "আইইলটস ব্যবস্থা — এক নজরে", titleEn: "The IELTS Exam — At a Glance", descriptionBn: "চারটি সেকশনের গঠন, মার্কিং ও কোন স্কোর কোথায় কাজে লাগে তার মানচিত্র।", descriptionEn: "A map of all four sections, how scoring works, and which score opens which door.", duration: "14:32", videoId: "dQw4w9WgXcQ", category: "ielts", isActive: true, sortOrder: 1 },
+  { id: "ifb-ielts-02", code: "IFB-IELTS-02", chapterNumber: 2, titleBn: "রাইটিং টাস্ক ২ — প্যারাগ্রাফের কাঠামো", titleEn: "Writing Task 2 — Paragraph Architecture", descriptionBn: "একটি শক্তিশালী আইইলটস রচনা কীভাবে সাজায়, সেটির হাতে-কলমে ভাঙচুর।", descriptionEn: "A live teardown of how a strong IELTS essay is assembled, paragraph by paragraph.", duration: "22:10", videoId: "dQw4w9WgXcQ", category: "ielts", isActive: true, sortOrder: 2 },
+  { id: "ifb-sop-03", code: "IFB-SOP-03", chapterNumber: 3, titleBn: "SOP — নিজের গল্প বলার ভাষা", titleEn: "SOP — The Language of Telling Your Own Story", descriptionBn: "একটি স্টেটমেন্ট অফ পারপাস কীভাবে ব্যক্তিগত হয়ে ওঠে, তার কাঠামো।", descriptionEn: "How a Statement of Purpose becomes genuinely personal instead of generic.", duration: "27:48", videoId: "dQw4w9WgXcQ", category: "sop", isActive: true, sortOrder: 3 },
+  { id: "ifb-sop-04", code: "IFB-SOP-04", chapterNumber: 4, titleBn: "SOP — রিয়েল অ্যাপ্লিকেশন ভাঙচুর", titleEn: "SOP — Real Application Teardown", descriptionBn: "একটি সফল আবেদনের SOP লাইন বাই লাইন বিশ্লেষণ।", descriptionEn: "A line-by-line analysis of a Statement of Purpose that earned admission.", duration: "31:05", videoId: "dQw4w9WgXcQ", category: "sop", isActive: true, sortOrder: 4 },
+  { id: "ifb-visa-05", code: "IFB-VISA-05", chapterNumber: 5, titleBn: "ভিসা ইন্টারভিউ — প্রস্তুতির ব্লুপ্রিন্ট", titleEn: "Visa Interview — The Preparation Blueprint", descriptionBn: "কনস্যুলার অফিসার যা শুনতে চান, এবং আপনি যা বলবেন — তার সমীকরণ।", descriptionEn: "What the consular officer actually listens for — and how to answer with confidence.", duration: "19:24", videoId: "dQw4w9WgXcQ", category: "visa", isActive: true, sortOrder: 5 },
+  { id: "ifb-visa-06", code: "IFB-VISA-06", chapterNumber: 6, titleBn: "ফান্ডিং প্রুফ — কাগজপত্রের সঠিক চালা", titleEn: "Proof of Funding — Getting the Paperwork Right", descriptionBn: "ব্যাংক স্টেটমেন্ট, স্পন্সর লেটার ও সোলভেন্সি সার্টিফিকেট যেভাবে সাজান।", descriptionEn: "How to assemble bank statements, sponsor letters, and solvency certificates cleanly.", duration: "16:40", videoId: "dQw4w9WgXcQ", category: "visa", isActive: true, sortOrder: 6 },
+  { id: "ifb-sch-07", code: "IFB-SCH-07", chapterNumber: 7, titleBn: "স্কলারশিপ — কোথায় খুঁজবেন, কীভাবে জিতবেন", titleEn: "Scholarships — Where to Look, How to Win", descriptionBn: "মেরিট-বেসড, নিড-বেসড ও কান্ট্রি-স্পেসিফিক স্কলারশিপের ম্যাপ।", descriptionEn: "A clear map of merit-based, need-based, and country-specific scholarships.", duration: "24:17", videoId: "dQw4w9WgXcQ", category: "scholarship", isActive: true, sortOrder: 7 },
+  { id: "ifb-int-08", code: "IFB-INT-08", chapterNumber: 8, titleBn: "মক ইন্টারভিউ — প্র্যাকটিস রাউন্ড", titleEn: "Mock Interview — Practice Round", descriptionBn: "একটি পূর্ণাঙ্গ মক ইন্টারভিউ ও প্রতিটি উত্তরের মূল্যায়ন।", descriptionEn: "A full mock interview with a breakdown of every answer given.", duration: "28:52", videoId: "dQw4w9WgXcQ", category: "interview", isActive: true, sortOrder: 8 },
+];
+
+async function main() {
+  const dataPath = path.join(process.cwd(), "data", "chapters.json");
+  const payload = {
+    _meta: {
+      description:
+        "Source-of-truth chapter list for the IdeaForge BD book companion tool. Editable from the admin dashboard in local dev (writes to this file). On Vercel this file is read-only (serverless filesystem). To add/update chapters in production, edit this file and git push.",
+      version: 1,
+      lastUpdated: new Date().toISOString(),
+    },
+    chapters: CHAPTERS,
+  };
+  await fs.mkdir(path.dirname(dataPath), { recursive: true });
+  await fs.writeFile(dataPath, JSON.stringify(payload, null, 2) + "\n", "utf-8");
+  console.log(`✓ data/chapters.json written with ${CHAPTERS.length} chapters`);
+
+  console.log("\n========================================");
+  console.log("  ADMIN LOGIN CREDENTIALS (local dev)");
+  console.log("========================================");
+  console.log("  Username: admin");
+  console.log(
+    "  Password: " + (process.env.ADMIN_PASSWORD || "IdeaForge@BD2024!xK9wQ")
+  );
+  console.log("  (Override via .env.local if needed.)");
+  console.log("========================================\n");
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Admin account that can manage chapters via the dashboard.
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// A book chapter and its companion video. The `code` is what is printed in
+/// the physical book and typed/scanned by readers to unlock the video.
+model Chapter {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  chapterNumber Int
+  titleBn       String
+  titleEn       String
+  descriptionBn String
+  descriptionEn String
+  duration      String
+  videoId       String
+  category      String
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// Anonymous analytics: which codes were attempted and whether they succeeded.
+/// Helps the author see which chapters get watched most and catch confusion.
+model UnlockLog {
+  id        String   @id @default(cuid())
+  code      String
+  success   Boolean
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
